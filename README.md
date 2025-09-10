@@ -137,9 +137,21 @@ The app uses CSS variables for easy theming. Key variables are defined in `src/a
 }
 ```
 
+## 🔗 Backend Integration
+
+The frontend is configured to communicate with a backend API for real AI responses:
+
+- **API Endpoint**: `POST http://localhost:8000/api/ask`
+- **Configuration**: Set `NEXT_PUBLIC_API_URL` environment variable
+- **Error Handling**: Graceful fallback when backend is unavailable
+- **Session Management**: Automatic session and user ID generation
+- **Context Awareness**: Sends conversation history for better responses
+
+See [BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md) for detailed setup instructions.
+
 ## 🔮 Future Enhancements
 
-- [ ] Backend integration for real AI responses
+- [x] Backend integration for real AI responses
 - [ ] User authentication and chat history persistence
 - [ ] Advanced search functionality
 - [ ] Multi-language support

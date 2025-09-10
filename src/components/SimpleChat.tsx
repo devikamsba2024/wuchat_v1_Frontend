@@ -3,14 +3,10 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Send, RotateCcw, ThumbsUp, ThumbsDown, Copy, Check } from 'lucide-react';
+import { chatAPI, createChatMessage, formatErrorMessage, type ChatMessage } from '@/lib/api';
+import StructuredMessage from './StructuredMessage';
 
-interface Message {
-  id: string;
-  content: string;
-  isUser: boolean;
-  timestamp: Date;
-  status?: 'sending' | 'sent' | 'delivered' | 'error';
-}
+// Message interface is now imported from api.ts
 
 interface QuickReply {
   id: string;
@@ -18,8 +14,25 @@ interface QuickReply {
   action: string;
 }
 
+interface MessageWithData extends ChatMessage {
+  answer?: {
+    fact_type?: string;
+    deadline_type?: string;
+    level?: string;
+    audience?: string;
+    date_iso?: string;
+    timezone?: string;
+    text: string;
+    confidence?: number;
+  };
+  source?: {
+    url: string;
+    quote: string;
+  };
+}
+
 export default function SimpleChat() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageWithData[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,12 +93,12 @@ export default function SimpleChat() {
   };
 
   const handleYesNoClick = (response: 'yes' | 'no') => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: response === 'yes' ? 'Yes' : 'No',
-      isUser: true,
-      timestamp: new Date(),
-      status: 'sending'
+    const userMessage: MessageWithData = {
+      ...createChatMessage(
+        response === 'yes' ? 'Yes' : 'No',
+        true,
+        'sending'
+      )
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -109,13 +122,7 @@ export default function SimpleChat() {
         setIsWaitingForName(false);
       }
 
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: botResponse,
-        isUser: false,
-        timestamp: new Date(),
-        status: 'delivered'
-      };
+      const botMessage = createChatMessage(botResponse, false, 'delivered');
 
       setMessages(prev => [...prev, botMessage]);
       setIsTyping(false);
@@ -123,31 +130,23 @@ export default function SimpleChat() {
   };
 
   // Initialize welcome message
-              useEffect(() => {
-                if (messages.length === 0 && !isWaitingForName) {
-                  const welcomeMessage: Message = {
-                    id: 'welcome',
-                    content: "Hey there! 👋 I'm Wu Assistant, a chatbot to help answer any questions about you with information about Wichita State University. Ask me about admissions, programs, events, or anything else! 🌾 Before we get started, can you share your name, that way I know who I'm chatting with?",
-                    isUser: false,
-                    timestamp: new Date(),
-                    status: 'delivered'
-                  };
-                  setMessages([welcomeMessage]);
-                  setIsWaitingForName(true);
-                }
-              }, [messages.length, isWaitingForName]);
+  useEffect(() => {
+    if (messages.length === 0) {
+      const welcomeMessage = createChatMessage(
+        "Hey there! 👋 I'm Wu Assistant, a chatbot to help answer any questions about you with information about Wichita State University. Ask me about admissions, programs, events, or anything else! 🌾 Before we get started, can you share your name, that way I know who I'm chatting with?",
+        false,
+        'delivered'
+      );
+      welcomeMessage.id = 'welcome';
+      setMessages([welcomeMessage]);
+      setIsWaitingForName(true);
+    }
+  }, [messages.length]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: inputValue.trim(),
-      isUser: true,
-      timestamp: new Date(),
-      status: 'sending'
-    };
-
+    const userMessage = createChatMessage(inputValue.trim(), true, 'sending');
     setMessages(prev => [...prev, userMessage]);
     const currentInput = inputValue.trim();
     setInputValue('');
@@ -181,50 +180,43 @@ export default function SimpleChat() {
           setIsWaitingForName(false);
         }
         
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          content: botResponse,
-          isUser: false,
-          timestamp: new Date(),
-          status: 'delivered'
+        const botMessage: MessageWithData = {
+          ...createChatMessage(botResponse, false, 'delivered')
         };
-        
         setMessages(prev => [...prev, botMessage]);
       } else {
-        // Regular conversation
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Regular conversation - use backend API
+        const context = {
+          user_name: userName || undefined,
+          conversation_history: messages.slice(-10) // Send last 10 messages for context
+        };
+
+        const response = await chatAPI.sendMessage(currentInput, context);
         
-        const responses = [
-          "Thank you for your question! I'm here to help with information about Wichita State University.",
-          "That's a great question! For more details, please visit our official website at wichita.edu.",
-          "I'd be happy to help! You can also contact OneStop at (316) 978-7676 for assistance.",
-          "Thanks for reaching out! Check out our website for the most up-to-date information.",
-          "Great question! Feel free to explore our campus or contact our admissions office for more details."
-        ];
+        if (response.status === 'error') {
+          throw new Error(response.error_message || 'Backend error occurred');
+        }
+
+        // Create message with structured data
+        const responseText = response.answer?.text || 'No response received';
         
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          content: randomResponse,
-          isUser: false,
-          timestamp: new Date(),
-          status: 'delivered'
+        const botMessage: MessageWithData = {
+          ...createChatMessage(responseText, false, 'delivered'),
+          answer: response.answer,
+          source: response.source
         };
         
         setMessages(prev => [...prev, botMessage]);
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      setError('Failed to send message. Please try again.');
+      setError(formatErrorMessage(error));
       
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "Sorry, I'm having trouble connecting to the server. Please try again later.",
-        isUser: false,
-        timestamp: new Date(),
-        status: 'error'
-      };
+      const errorMessage = createChatMessage(
+        "Sorry, I'm having trouble connecting to the server. Please try again later.",
+        false,
+        'error'
+      );
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
@@ -243,6 +235,7 @@ export default function SimpleChat() {
     setError(null);
     setUserName(null);
     setIsWaitingForName(false);
+    chatAPI.resetSession(); // Reset the API session
   };
 
   const retryLastMessage = () => {
@@ -319,69 +312,79 @@ export default function SimpleChat() {
                   </div>
                 )}
                 
-                <div
-                  className={`max-w-xs px-4 py-3 rounded-lg relative ${
-                    message.isUser
-                      ? 'bg-[var(--wsu-yellow)] text-[var(--wsu-black)] rounded-br-sm'
-                      : 'bg-muted text-foreground rounded-bl-sm'
-                  } ${message.status === 'error' ? 'border border-red-300' : ''}`}
-                >
-                  <p className="text-sm leading-relaxed">{message.content}</p>
-                  
-                  {/* Yes/No buttons for welcome message */}
-                  {message.id === 'welcome' && isWaitingForName && (
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={() => handleYesNoClick('yes')}
-                        className="px-3 py-1.5 text-xs bg-[var(--wsu-yellow)] text-[var(--wsu-black)] rounded-full hover:bg-[var(--wsu-yellow)]/80 transition-colors font-medium"
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => handleYesNoClick('no')}
-                        className="px-3 py-1.5 text-xs bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors font-medium"
-                      >
-                        No
-                      </button>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between mt-2">
-                    <p className="text-xs opacity-70">
-                      {formatRelativeTime(message.timestamp)}
-                    </p>
+                {message.isUser ? (
+                  <div
+                    className={`max-w-xs px-4 py-3 rounded-lg relative ${
+                      'bg-[var(--wsu-yellow)] text-[var(--wsu-black)] rounded-br-sm'
+                    } ${message.status === 'error' ? 'border border-red-300' : ''}`}
+                  >
+                    <p className="text-sm leading-relaxed">{message.content}</p>
                     
-                    {/* Message Status & Actions */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {message.status === 'sending' && (
-                        <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
-                      )}
-                      {message.status === 'sent' && (
-                        <div className="w-2 h-2 bg-green-500 rounded-full" />
-                      )}
-                      {message.status === 'error' && (
-                        <button
-                          onClick={retryLastMessage}
-                          className="text-xs text-red-600 hover:text-red-800"
-                        >
-                          Retry
-                        </button>
-                      )}
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-xs opacity-70">
+                        {formatRelativeTime(message.timestamp)}
+                      </p>
                       
-                      <button
-                        onClick={() => handleCopyMessage(message.id, message.content)}
-                        className="p-1 hover:bg-black/10 rounded"
-                        title="Copy message"
-                      >
-                        {copiedMessageId === message.id ? (
-                          <Check className="w-3 h-3" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
+                      {/* Message Status & Actions */}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {message.status === 'sending' && (
+                          <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
                         )}
-                      </button>
+                        {message.status === 'sent' && (
+                          <div className="w-2 h-2 bg-green-500 rounded-full" />
+                        )}
+                        {message.status === 'error' && (
+                          <button
+                            onClick={retryLastMessage}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Retry
+                          </button>
+                        )}
+                        
+                        <button
+                          onClick={() => handleCopyMessage(message.id, message.content)}
+                          className="p-1 hover:bg-black/10 rounded"
+                          title="Copy message"
+                        >
+                          {copiedMessageId === message.id ? (
+                            <Check className="w-3 h-3" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="relative">
+                    <StructuredMessage
+                      content={message.content}
+                      answer={message.answer}
+                      source={message.source}
+                      isUser={message.isUser}
+                      timestamp={message.timestamp}
+                    />
+                    
+                    {/* Yes/No buttons for welcome message */}
+                    {message.id === 'welcome' && isWaitingForName && (
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => handleYesNoClick('yes')}
+                          className="px-3 py-1.5 text-xs bg-[var(--wsu-yellow)] text-[var(--wsu-black)] rounded-full hover:bg-[var(--wsu-yellow)]/80 transition-colors font-medium"
+                        >
+                          Yes
+                        </button>
+                        <button
+                          onClick={() => handleYesNoClick('no')}
+                          className="px-3 py-1.5 text-xs bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors font-medium"
+                        >
+                          No
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))
           )}
