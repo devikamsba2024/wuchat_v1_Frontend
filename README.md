@@ -1,11 +1,10 @@
 # WSU Assistant
 
-A clean, minimal chat interface for Wichita State University information and support.
+A chat interface for Wichita State University information and support.
 
 ## 🚀 Features
 
 - **Interactive Chat Interface**: Full-featured chat UI with message history and quick prompts
-- **Responsive Design**: Mobile-first design that works seamlessly across all devices
 - **Dark Mode Support**: Automatic theme detection with manual toggle option
 - **Accessibility**: WCAG 2.2 AA compliant with keyboard navigation and screen reader support
 - **WSU Brand Compliance**: Carefully designed to match Wichita State University's visual identity
@@ -22,7 +21,7 @@ A clean, minimal chat interface for Wichita State University information and sup
 
 ## 🎨 Brand Guidelines
 
-This project carefully follows Wichita State University's brand guidelines while maintaining compliance:
+This project follows Wichita State University's brand guidelines while maintaining compliance:
 
 ### Colors
 - **WSU Yellow**: #FFDB00 (Shocker Yellow)
@@ -38,17 +37,6 @@ This project carefully follows Wichita State University's brand guidelines while
 
 ⚠️ **This is an unofficial project** and is not affiliated with or endorsed by Wichita State University.
 
-**What we DON'T use:**
-- Official WSU logos (Wheat, Flying W, WuShock mascot)
-- Licensed Klavika font (using Titillium Web instead)
-- Official wordmarks or trademarked materials
-
-**What we DO use:**
-- Generic "WU" letterform watermark (custom SVG, not trademarked)
-- Official brand colors as specified on wichita.edu
-- Typography that closely matches WSU's visual identity
-- Design patterns inspired by the official website
-
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -61,7 +49,7 @@ This project carefully follows Wichita State University's brand guidelines while
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd wubot
+cd wuchat_v1_Frontend
 ```
 
 2. Install dependencies:
@@ -164,4 +152,3 @@ This project is for educational and demonstration purposes. Please respect Wichi
 
 ---
 
-**Disclaimer**: This is an unofficial project and is not affiliated with Wichita State University. For official university information, please visit the official website at [wichita.edu](https://www.wichita.edu).
