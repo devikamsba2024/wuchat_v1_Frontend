@@ -18,24 +18,29 @@ const titilliumWeb = Titillium_Web({
 });
 
 export const metadata: Metadata = {
-  title: "WU Assistant - Your Virtual Guide to Wichita State University",
+  title: "wuchat - Your Virtual Guide to Wichita State University",
   description: "Get instant answers about admissions, programs, events, and campus life at Wichita State University. Your virtual assistant for all things WU.",
-  keywords: ["Wichita State University", "WSU", "WU", "admissions", "academics", "campus", "assistant"],
-  authors: [{ name: "WU Assistant Team" }],
+  keywords: ["Wichita State University", "WSU", "WU", "admissions", "academics", "campus", "assistant", "wuchat"],
+  authors: [{ name: "wuchat Team" }],
   openGraph: {
-    title: "WU Assistant - Your Virtual Guide to Wichita State University",
+    title: "wuchat - Your Virtual Guide to Wichita State University",
     description: "Get instant answers about admissions, programs, events, and campus life at Wichita State University.",
     type: "website",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "WU Assistant - Your Virtual Guide to Wichita State University",
+    title: "wuchat - Your Virtual Guide to Wichita State University",
     description: "Get instant answers about admissions, programs, events, and campus life at Wichita State University.",
   },
   robots: {
     index: true,
     follow: true,
+  },
+  other: {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
   },
 };
 

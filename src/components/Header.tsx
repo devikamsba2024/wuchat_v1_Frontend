@@ -17,7 +17,7 @@ export default function Header({ onThemeToggle, isDark = false }: HeaderProps) {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="text-2xl font-heading font-bold text-[var(--wsu-black)]">
-            WU Assistant
+            wuchat
           </div>
           <Button
             variant="ghost"

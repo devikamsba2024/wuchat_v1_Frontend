@@ -13,10 +13,8 @@ export default function Home() {
 
 
       {/* Chat Section */}
-                  <section id="hero-section" className="relative py-8 px-4 min-h-screen flex items-center justify-center">
-                    <div className="container mx-auto max-w-6xl w-full">
+                  <section id="hero-section" className="relative py-8 px-4 min-h-screen flex items-center justify-center bg-gray-100">
                       <SimpleChat />
-                    </div>
                   </section>
 
 

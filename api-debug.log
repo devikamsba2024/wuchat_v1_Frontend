@@ -1,0 +1,67 @@
+[2025-11-24T21:29:13.532Z] ================================================================================
+[2025-11-24T21:29:13.552Z] STARTING API DEBUG TEST
+[2025-11-24T21:29:13.553Z] ================================================================================
+[2025-11-24T21:29:13.553Z] 
+📤 Making request to: http://localhost:8501/api/ask
+[2025-11-24T21:29:13.553Z] 📤 Request body: {
+  "q": "Does WSU offer masters in Business Analytics",
+  "user_id": "test_user",
+  "session_id": "test_session",
+  "context": {}
+}
+[2025-11-24T21:29:13.553Z] 
+📥 Starting fetch...
+[2025-11-24T21:29:25.519Z] 
+📥 Response status: 200 OK
+[2025-11-24T21:29:25.520Z] 📥 Response headers: {
+  "content-length": "2276",
+  "content-type": "application/json",
+  "date": "Mon, 24 Nov 2025 21:29:13 GMT",
+  "server": "uvicorn"
+}
+[2025-11-24T21:29:25.520Z] 
+📥 Content-Type: application/json
+[2025-11-24T21:29:25.522Z] 
+📥 Response text length: 2260
+[2025-11-24T21:29:25.523Z] 📥 Response text (first 1000 chars): {"answer":"Yes, Wichita State University (WSU) offers a Master of Science in Business Analytics. This program is designed to equip students with the skills necessary to assist data-driven decisions in various industries, focusing on quantitative tools for building descriptive, predictive, and prescriptive models.\n\nFor more information, visit: https://www.wichita.edu/academics/majors/index.php","sources":[{"source_file":"academics_Degree-Programs.md","chunk_index":6,"page_number":null,"similarity_score":-2.01,"text_snippet":"MSSCM to MBA \n— Master of Business Administration:\nBusiness Administration - Supply Chain Management \n— Master of Science:\nBusiness Analytics :\n— Minor:\nBusiness Analytics \n— Undergraduate Certificate..."},{"source_file":"academics_Shock-Your-Career.md","chunk_index":2,"page_number":null,"similarity_score":-3.733,"text_snippet":"ledge that is immediately applicable.\nLearn more \n\nGraduate Certificate in Advanced Business Fundamentals (15 hours):\nGain bus
+[2025-11-24T21:29:25.523Z] 
+✅ JSON parsed successfully
+[2025-11-24T21:29:25.523Z] 
+📥 Parsed data keys: answer, sources, query, num_chunks_retrieved, user_id, session_id
+[2025-11-24T21:29:25.523Z] 📥 data.answer type: string
+[2025-11-24T21:29:25.523Z] 📥 data.answer value: Yes, Wichita State University (WSU) offers a Master of Science in Business Analytics. This program is designed to equip students with the skills necessary to assist data-driven decisions in various in
+[2025-11-24T21:29:25.523Z] 📥 data.answer is string? true
+[2025-11-24T21:29:25.523Z] 📥 data.sources exists? true
+[2025-11-24T21:29:25.523Z] 📥 data.sources length: 5
+[2025-11-24T21:29:25.523Z] 
+🔍 Testing parsing logic...
+[2025-11-24T21:29:25.524Z] ✅✅✅ MATCHED: answer is string format ✅✅✅
+[2025-11-24T21:29:25.524Z] ✅ Answer length: 384
+[2025-11-24T21:29:25.524Z] 
+✅✅✅ PARSED RESULT ✅✅✅
+[2025-11-24T21:29:25.524Z] ✅ result.status: OK
+[2025-11-24T21:29:25.524Z] ✅ result.answer exists? true
+[2025-11-24T21:29:25.524Z] ✅ result.answer.text exists? true
+[2025-11-24T21:29:25.524Z] ✅ result.answer.text: Yes, Wichita State University (WSU) offers a Master of Science in Business Analytics. This program is designed to equip students with the skills necessary to assist data-driven decisions in various in...
+[2025-11-24T21:29:25.524Z] 
+✅ Full result: {
+  "status": "OK",
+  "answer": {
+    "text": "Yes, Wichita State University (WSU) offers a Master of Science in Business Analytics. This program is designed to equip students with the skills necessary to assist data-driven decisions in various industries, focusing on quantitative tools for building descriptive, predictive, and prescriptive models.\n\nFor more information, visit: https://www.wichita.edu/academics/majors/index.php",
+    "confidence": 0.9
+  },
+  "source": {
+    "url": "https://wichita.edu/academics_Degree-Programs.md",
+    "quote": "MSSCM to MBA \n— Master of Business Administration:\nBusiness Administration - Supply Chain Management \n— Master of Science:\nBusiness Analytics :\n— Minor:\nBusiness Analytics \n— Undergraduate Certificate..."
+  }
+}
+[2025-11-24T21:29:25.524Z] 
+🔍 Testing component extraction...
+[2025-11-24T21:29:25.524Z] ✅ Component would extract: Yes, Wichita State University (WSU) offers a Master of Science in Business Analytics. This program is designed to equip students with the skills necessary to assist data-driven decisions in various in...
+[2025-11-24T21:29:25.524Z] ✅ Extraction successful? true
+[2025-11-24T21:29:25.524Z] 
+================================================================================
+[2025-11-24T21:29:25.524Z] DEBUG TEST COMPLETE
+[2025-11-24T21:29:25.524Z] ================================================================================
+[2025-11-24T21:29:25.524Z] 
+📄 Full log saved to: api-debug.log

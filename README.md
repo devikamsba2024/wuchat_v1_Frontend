@@ -141,13 +141,61 @@ The app uses CSS variables for easy theming. Key variables are defined in `src/a
 
 The frontend is configured to communicate with a backend API for real AI responses:
 
-- **API Endpoint**: `POST http://localhost:8000/api/ask`
-- **Configuration**: Set `NEXT_PUBLIC_API_URL` environment variable
+- **API Endpoint**: `POST http://localhost:8501/api/ask`
+- **Configuration**: Set `NEXT_PUBLIC_API_URL` environment variable (defaults to `http://localhost:8501`)
 - **Error Handling**: Graceful fallback when backend is unavailable
 - **Session Management**: Automatic session and user ID generation
 - **Context Awareness**: Sends conversation history for better responses
 
-See [BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md) for detailed setup instructions.
+## 🚀 Local Production Deployment
+
+### Prerequisites
+- Node.js 18+ installed
+- Backend API running on port 8501 (or configure `NEXT_PUBLIC_API_URL`)
+
+### Steps to Deploy Locally
+
+1. **Build the production version:**
+   ```bash
+   npm run build
+   ```
+
+2. **Start the production server:**
+   ```bash
+   npm start
+   ```
+
+3. **Access the application:**
+   - Open [http://localhost:3000](http://localhost:3000) in your browser
+   - The app will connect to your backend API at `http://localhost:8501`
+
+### Environment Configuration
+
+Create a `.env.local` file in the root directory (optional, defaults are already set):
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8501
+```
+
+### Running in Production Mode
+
+The production build is optimized and includes:
+- ✅ Minified JavaScript and CSS
+- ✅ Optimized images and assets
+- ✅ Static page generation where possible
+- ✅ Production-ready error handling
+
+### Port Configuration
+
+- **Frontend**: Runs on port 3000 by default
+- **Backend**: Configured to connect to port 8501
+
+To change the frontend port:
+```bash
+PORT=8080 npm start
+```
+
+To change the backend URL, set the `NEXT_PUBLIC_API_URL` environment variable before building.
 
 ## 🔮 Future Enhancements
 

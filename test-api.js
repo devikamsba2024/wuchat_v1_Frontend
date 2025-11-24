@@ -24,6 +24,18 @@ async function testAPI() {
       }
     },
     {
+      name: 'Deadline information test',
+      request: {
+        message: 'What are the admission deadlines?',
+        user_id: 'test_user_123',
+        session_id: 'test_session_456',
+        context: {
+          user_name: 'Test User',
+          conversation_history: []
+        }
+      }
+    },
+    {
       name: 'Context-aware test',
       request: {
         message: 'What programs do you offer?',
@@ -63,9 +75,22 @@ async function testAPI() {
 
       const data = await response.json();
       
-      console.log(`✅ Success: ${data.response}`);
+      console.log(`✅ Success: ${data.answer?.text || 'No response text'}`);
       console.log(`   Status: ${data.status}`);
       console.log(`   Session ID: ${data.session_id || 'N/A'}`);
+      
+      if (data.answer) {
+        console.log(`   Fact Type: ${data.answer.fact_type || 'N/A'}`);
+        console.log(`   Confidence: ${data.answer.confidence || 'N/A'}`);
+        if (data.answer.date_iso) {
+          console.log(`   Date: ${data.answer.date_iso}`);
+        }
+      }
+      
+      if (data.source) {
+        console.log(`   Source: ${data.source.url}`);
+      }
+      
       console.log('');
       
     } catch (error) {

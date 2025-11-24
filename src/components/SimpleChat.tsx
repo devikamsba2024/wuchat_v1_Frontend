@@ -1,5 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Send, RotateCcw, ThumbsUp, ThumbsDown, Copy, Check } from 'lucide-react';
@@ -8,11 +10,6 @@ import StructuredMessage from './StructuredMessage';
 
 // Message interface is now imported from api.ts
 
-interface QuickReply {
-  id: string;
-  text: string;
-  action: string;
-}
 
 interface MessageWithData extends ChatMessage {
   answer?: {
@@ -42,14 +39,6 @@ export default function SimpleChat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Quick reply suggestions
-  const quickReplies: QuickReply[] = [
-    { id: '1', text: 'Tell me about admissions', action: 'admissions' },
-    { id: '2', text: 'What programs do you offer?', action: 'programs' },
-    { id: '3', text: 'Campus events and activities', action: 'events' },
-    { id: '4', text: 'How to contact OneStop?', action: 'contact' },
-    { id: '5', text: 'Financial aid information', action: 'financial-aid' },
-  ];
 
   // Auto-resize textarea
   useEffect(() => {
@@ -86,11 +75,6 @@ export default function SimpleChat() {
     }
   };
 
-  // Handle quick reply
-  const handleQuickReply = (reply: QuickReply) => {
-    setInputValue(reply.text);
-    textareaRef.current?.focus();
-  };
 
   const handleYesNoClick = (response: 'yes' | 'no') => {
     const userMessage: MessageWithData = {
@@ -115,7 +99,7 @@ export default function SimpleChat() {
       let botResponse: string;
       if (response === 'yes') {
         botResponse = "Great! Please tell me your name so I can address you properly. 😊";
-        setIsWaitingForName(false);
+        // Keep isWaitingForName as true - user still needs to provide their name
       } else {
         botResponse = "No problem! I'll just call you 'friend' then. How can I help you today? 😊";
         setUserName('friend');
@@ -131,17 +115,15 @@ export default function SimpleChat() {
 
   // Initialize welcome message
   useEffect(() => {
-    if (messages.length === 0) {
-      const welcomeMessage = createChatMessage(
-        "Hey there! 👋 I'm Wu Assistant, a chatbot to help answer any questions about you with information about Wichita State University. Ask me about admissions, programs, events, or anything else! 🌾 Before we get started, can you share your name, that way I know who I'm chatting with?",
-        false,
-        'delivered'
-      );
-      welcomeMessage.id = 'welcome';
-      setMessages([welcomeMessage]);
-      setIsWaitingForName(true);
-    }
-  }, [messages.length]);
+    const welcomeMessage = createChatMessage(
+      "Hey there! 👋 I'm wuchat, your virtual guide to Wichita State University. Ask me about admissions, programs, events, or anything else! 🌾 Before we get started, can you share your name, that way I know who I'm chatting with?",
+      false,
+      'delivered'
+    );
+    welcomeMessage.id = 'welcome';
+    setMessages([welcomeMessage]);
+    setIsWaitingForName(true);
+  }, []);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
@@ -168,7 +150,7 @@ export default function SimpleChat() {
         let botResponse: string;
         if (currentInput.toLowerCase().includes('yes') || currentInput.toLowerCase().includes('sure') || currentInput.toLowerCase().includes('ok')) {
           botResponse = "Great! Please tell me your name so I can address you properly. 😊";
-          setIsWaitingForName(false);
+          // Keep isWaitingForName as true - user still needs to provide name
         } else if (currentInput.toLowerCase().includes('no') || currentInput.toLowerCase().includes('not') || currentInput.toLowerCase().includes('skip')) {
           botResponse = "No problem! I'll just call you 'friend' then. How can I help you today? 😊";
           setUserName('friend');
@@ -176,7 +158,7 @@ export default function SimpleChat() {
         } else {
           // User provided their name directly
           setUserName(currentInput);
-          botResponse = `Nice to meet you, ${currentInput}! 😊 How can I help you today?`;
+          botResponse = `Nice to meet you, ${currentInput}! 😊 I'm excited to help you with any questions about Wichita State University. What would you like to know?`;
           setIsWaitingForName(false);
         }
         
@@ -185,28 +167,69 @@ export default function SimpleChat() {
         };
         setMessages(prev => [...prev, botMessage]);
       } else {
-        // Regular conversation - use backend API
-        const context = {
-          user_name: userName || undefined,
-          conversation_history: messages.slice(-10) // Send last 10 messages for context
-        };
+          // Regular conversation - use backend API
+          try {
+            const context = {
+              user_name: userName || undefined,
+              conversation_history: messages.slice(-10) // Send last 10 messages for context
+            };
 
-        const response = await chatAPI.sendMessage(currentInput, context);
-        
-        if (response.status === 'error') {
-          throw new Error(response.error_message || 'Backend error occurred');
+            const response = await chatAPI.sendMessage(currentInput, context);
+
+            if (response.status === 'error') {
+              throw new Error(response.error_message || 'Backend error occurred');
+            }
+
+            // SIMPLE DIRECT FIX: Use answer.text directly, no complex logic
+            let messageContent: string;
+            
+            if (response.answer?.text) {
+              messageContent = response.answer.text;
+            } else if (typeof response.answer === 'string') {
+              messageContent = response.answer;
+            } else if (response.data?.response) {
+              messageContent = response.data.response;
+            } else {
+              messageContent = 'I apologize, but I could not process the response. Please try again.';
+            }
+            
+            // Add personalized greeting if this is the first response after name collection
+            if (userName && userName !== 'friend' && messages.filter(m => !m.isUser && !m.id?.includes('welcome')).length === 0) {
+              messageContent = `Hi ${userName}! ${messageContent}`;
+            }
+            
+            const botMessage: MessageWithData = {
+              ...createChatMessage(messageContent, false, 'delivered'),
+              answer: response.answer,
+              source: response.source
+            };
+            
+            setMessages(prev => [...prev, botMessage]);
+          } catch (apiError) {
+            console.error('Backend API unavailable, using fallback response:', apiError);
+          
+          // Fallback response when backend is unavailable
+          const fallbackResponses = [
+            "Thank you for your question! I'm here to help with information about Wichita State University.",
+            "That's a great question! For more details, please visit our official website at wichita.edu.",
+            "I'd be happy to help! You can also contact OneStop at (316) 978-7676 for assistance.",
+            "Thanks for reaching out! Check out our website for the most up-to-date information.",
+            "Great question! Feel free to explore our campus or contact our admissions office for more details."
+          ];
+          
+          let randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+          
+          // Add personalized greeting if user has provided their name
+          if (userName && userName !== 'friend') {
+            randomResponse = `Hi ${userName}! ${randomResponse}`;
+          }
+          
+          const botMessage: MessageWithData = {
+            ...createChatMessage(randomResponse, false, 'delivered')
+          };
+          
+          setMessages(prev => [...prev, botMessage]);
         }
-
-        // Create message with structured data
-        const responseText = response.answer?.text || 'No response received';
-        
-        const botMessage: MessageWithData = {
-          ...createChatMessage(responseText, false, 'delivered'),
-          answer: response.answer,
-          source: response.source
-        };
-        
-        setMessages(prev => [...prev, botMessage]);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -249,19 +272,19 @@ export default function SimpleChat() {
   };
 
   return (
-    <Card className="flex flex-col h-[90vh] max-h-[1000px] border border-[var(--wsu-black)]/12 shadow-sm bg-background/95 backdrop-blur-sm">
+    <Card className="flex flex-col h-[700px] w-[450px] border border-gray-200 shadow-lg bg-white rounded-lg">
       {/* Header */}
-      <div className="bg-[var(--wsu-black)] text-white p-4 rounded-t-lg border-t-4 border-t-[var(--wsu-yellow)]">
+      <div className="bg-gray-50 border-b border-gray-200 p-3 rounded-t-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
-            <h2 className="font-heading font-semibold">WU Assistant</h2>
+            <h2 className="font-semibold text-gray-800">wuchat</h2>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleClearChat}
-            className="text-white hover:bg-white/10 h-8 px-2"
+            className="text-gray-600 hover:bg-gray-100 h-8 px-2"
             aria-label="Clear chat"
           >
             <RotateCcw className="h-4 w-4" />
@@ -270,27 +293,15 @@ export default function SimpleChat() {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 p-4 bg-gradient-to-b from-background/90 to-muted/10 overflow-y-auto relative">
-        {/* WU Watermark inside chat */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-          <img
-            src="/wu.png"
-            alt="WU Mascot Watermark"
-            className="w-40 h-40 md:w-56 md:h-56 lg:w-72 lg:h-72 opacity-25 object-contain"
-            style={{ 
-              filter: 'drop-shadow(0 0 15px rgba(0,0,0,0.1))',
-            }}
-          />
-        </div>
-        
-        <div className="space-y-4 relative z-10">
+      <div className="flex-1 p-3 bg-gray-50 overflow-y-auto">
+        <div className="space-y-3">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <div className="w-16 h-16 bg-[var(--wsu-yellow)] rounded-full flex items-center justify-center mb-4">
-                <span className="text-2xl">🌾</span>
+            <div className="flex flex-col items-center justify-center h-48 text-center">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{backgroundColor: 'var(--wsu-yellow)'}}>
+                <span className="text-xl">💬</span>
               </div>
-              <h3 className="font-heading font-semibold mb-2">WU Assistant</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold mb-2 text-gray-800">wuchat</h3>
+              <p className="text-sm text-gray-600">
                 Loading your personalized experience...
               </p>
             </div>
@@ -302,23 +313,31 @@ export default function SimpleChat() {
               >
                 {!message.isUser && (
                   <div className="flex-shrink-0 mr-2 self-end">
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-[var(--wsu-yellow)]">
-                      <img
-                        src="/wu.png"
-                        alt="WU Assistant"
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--wsu-yellow)'}}>
+                      <span className="text-black text-sm font-medium">W</span>
                     </div>
                   </div>
                 )}
                 
                 {message.isUser ? (
                   <div
-                    className={`max-w-xs px-4 py-3 rounded-lg relative ${
-                      'bg-[var(--wsu-yellow)] text-[var(--wsu-black)] rounded-br-sm'
-                    } ${message.status === 'error' ? 'border border-red-300' : ''}`}
+                    className={`max-w-[350px] px-3 py-2 rounded-lg relative text-black rounded-br-sm ${
+                      message.status === 'error' ? 'border border-red-300' : ''
+                    }`}
+                    style={{backgroundColor: 'var(--wsu-yellow)'}}
                   >
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <div className="text-sm leading-relaxed prose prose-sm max-w-none">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          a: ({ ...props }: { href?: string; children?: React.ReactNode }) => (
+                            <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline" />
+                          ),
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
                     
                     <div className="flex items-center justify-between mt-2">
                       <p className="text-xs opacity-70">
@@ -359,7 +378,7 @@ export default function SimpleChat() {
                 ) : (
                   <div className="relative">
                     <StructuredMessage
-                      content={message.content}
+                      content={message.answer?.text || message.content}
                       answer={message.answer}
                       source={message.source}
                       isUser={message.isUser}
@@ -371,7 +390,8 @@ export default function SimpleChat() {
                       <div className="flex gap-2 mt-3">
                         <button
                           onClick={() => handleYesNoClick('yes')}
-                          className="px-3 py-1.5 text-xs bg-[var(--wsu-yellow)] text-[var(--wsu-black)] rounded-full hover:bg-[var(--wsu-yellow)]/80 transition-colors font-medium"
+                          className="px-3 py-1.5 text-xs text-black rounded-full transition-colors font-medium hover:opacity-80"
+                          style={{backgroundColor: 'var(--wsu-yellow)'}}
                         >
                           Yes
                         </button>
@@ -392,22 +412,18 @@ export default function SimpleChat() {
           {isTyping && (
             <div className="flex justify-start">
               <div className="flex-shrink-0 mr-2 self-end">
-                <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-[var(--wsu-yellow)]">
-                  <img
-                    src="/wu.png"
-                    alt="WU Assistant"
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{backgroundColor: 'var(--wsu-yellow)'}}>
+                  <span className="text-black text-sm font-medium">W</span>
                 </div>
               </div>
-              <div className="bg-muted text-foreground px-4 py-2 rounded-lg">
+              <div className="bg-white border border-gray-200 text-gray-800 px-3 py-2 rounded-lg max-w-[350px]">
                 <div className="flex items-center gap-2">
                   <div className="flex gap-1">
                     <div className="w-2 h-2 bg-current rounded-full animate-bounce" />
                     <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
                     <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                   </div>
-                  <span className="text-sm">WU Assistant is thinking...</span>
+                  <span className="text-sm">wuchat is thinking...</span>
                 </div>
               </div>
             </div>
@@ -434,7 +450,7 @@ export default function SimpleChat() {
       )}
 
       {/* Input Area */}
-      <div className="p-4 border-t border-border">
+      <div className="p-3 border-t border-border">
         <div className="flex gap-2 items-end">
           <div className="flex-1 relative">
             <textarea
@@ -454,7 +470,8 @@ export default function SimpleChat() {
           <Button
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || isTyping}
-            className="bg-[var(--wsu-yellow)] text-[var(--wsu-black)] hover:bg-[var(--wsu-yellow)]/90 h-10 px-4"
+            className="text-black h-10 px-4 hover:opacity-80 transition-opacity"
+            style={{backgroundColor: 'var(--wsu-yellow)'}}
           >
             {isTyping ? (
               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -464,20 +481,6 @@ export default function SimpleChat() {
           </Button>
         </div>
         
-        {/* Quick Reply Suggestions */}
-        <div className="mt-3">
-          <div className="flex flex-wrap gap-2 justify-center">
-            {quickReplies.map((reply) => (
-              <button
-                key={reply.id}
-                onClick={() => handleQuickReply(reply)}
-                className="px-3 py-1.5 text-xs bg-[var(--wsu-yellow)] text-[var(--wsu-black)] rounded-full hover:bg-[var(--wsu-yellow)]/80 transition-colors"
-              >
-                {reply.text}
-              </button>
-            ))}
-          </div>
-        </div>
         
         {/* Keyboard Shortcuts Help */}
         <div className="mt-2 text-xs text-muted-foreground text-center">
