@@ -1,149 +1,171 @@
 # Backend Integration Guide
 
-## Overview
-The WSU Assistant frontend is now configured to communicate with a backend API at `http://localhost:8000/api/ask`.
+Updated: November 2025
 
-## API Configuration
+The frontend now talks to the backend that you deployed on **`http://localhost:8501/api/ask`**. This document summarizes how the integration works today and what the backend needs to return for the UI to render rich answers.
 
-### Environment Variables
-The API URL can be configured using environment variables:
+---
+
+## 1. API Configuration
+
+| Setting | Value / Description |
+| --- | --- |
+| Default base URL | `http://localhost:8501` |
+| Endpoint | `POST /api/ask` |
+| Content-Type | `application/json` |
+| Env override | `NEXT_PUBLIC_API_URL` |
+
+Create `.env.local` (optional—defaults already match):
 
 ```bash
-# .env.local
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_API_URL=http://localhost:8501
 ```
 
-### Default Configuration
-- **Default API URL**: `http://localhost:8000`
-- **Endpoint**: `POST /api/ask`
-- **Content-Type**: `application/json`
+---
 
-## API Request Format
+## 2. Request Payload
 
-The frontend sends requests in the following format:
+The frontend sends the shape below. Note that the backend expects the **`q`** field instead of `message`.
 
-```typescript
+```ts
 interface ChatRequest {
-  message: string;           // User's message
-  user_id?: string;         // Unique user identifier
-  session_id?: string;      // Session identifier for conversation continuity
+  q: string;                     // user prompt (trimmed)
+  user_id?: string;              // auto-generated in the browser
+  session_id?: string;           // auto-generated per chat session
   context?: {
-    user_name?: string;     // User's name if provided
-    conversation_history?: ChatMessage[]; // Last 10 messages for context
+    user_name?: string;
+    conversation_history?: ChatMessage[]; // last 10 messages
   };
 }
 ```
 
-## API Response Format
-
-The backend should respond with:
-
-```typescript
-interface ChatResponse {
-  status: 'OK' | 'error';
-  answer?: {
-    fact_type?: string;        // Type of information (e.g., 'deadline')
-    deadline_type?: string;    // Type of deadline (e.g., 'final')
-    level?: string;           // Academic level (e.g., 'undergraduate')
-    audience?: string;        // Target audience (e.g., 'domestic')
-    date_iso?: string;        // ISO date string
-    timezone?: string;        // Timezone information
-    text: string;             // Main response text
-    confidence?: number;      // Confidence score (0-1)
-  };
-  source?: {
-    url: string;              // Source URL
-    quote: string;            // Relevant quote from source
-  };
-  session_id?: string;        // Session identifier
-  user_id?: string;          // User identifier
-  error_message?: string;     // Error message if status is 'error'
-}
-```
-
-## Example API Call
+Example call:
 
 ```bash
-curl -X POST http://localhost:8000/api/ask \
+curl -X POST http://localhost:8501/api/ask \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "What are the admission deadlines?",
-    "user_id": "user_123",
-    "session_id": "session_456",
+    "q": "Does WSU offer Business Analytics?",
+    "user_id": "user_demo",
+    "session_id": "session_demo",
     "context": {
-      "user_name": "John",
+      "user_name": "Abcd",
       "conversation_history": []
     }
   }'
 ```
 
-## Example Response
+---
 
-```json
+## 3. Expected Response Formats
+
+The frontend can handle several shapes automatically. Preferred format:
+
+```ts
 {
-  "status": "OK",
-  "answer": {
-    "fact_type": "deadline",
-    "deadline_type": "final",
-    "level": "undergraduate", 
-    "audience": "domestic",
-    "date_iso": "2025-01-15",
-    "timezone": "America/Chicago",
-    "text": "The final deadline for undergraduate admissions is January 15, 2025.",
-    "confidence": 0.95
-  },
-  "source": {
-    "url": "https://wichita.edu/admissions/deadlines",
-    "quote": "Final deadline for Fall 2025: January 15, 2025"
-  }
+  "answer": "Yes, Wichita State University (WSU) offers ...",
+  "sources": [
+    {
+      "source_file": "academics_Degree-Programs.md",
+      "text_snippet": "Business Analytics ..."
+    }
+  ],
+  "session_id": "...",
+  "user_id": "..."
 }
 ```
 
-## Structured Data Display
+Other accepted responses:
 
-The frontend automatically formats structured responses:
+1. Legacy structured object (with `answer.text`)
+2. `{ success: true, data: { response: "..." } }`
+3. Error payloads (`success: false`, `status: 'error'`)
 
-1. **Deadline Information**: Special formatting for admission deadlines with dates and details
-2. **Confidence Indicators**: Visual badges showing response confidence levels
-3. **Source Attribution**: Clickable links to source URLs with relevant quotes
-4. **Fact Type Recognition**: Different display styles based on information type
+Regardless of format, the frontend eventually expects to render `result.answer.text`. If the backend returns a plain string, the API layer converts it automatically.
 
-## Error Handling
+---
 
-The frontend includes comprehensive error handling:
+## 4. Structured Data Display
 
-1. **Network Errors**: Shows user-friendly error messages
-2. **API Errors**: Displays backend error messages
-3. **Fallback Responses**: Provides default responses when backend is unavailable
-4. **Retry Functionality**: Users can retry failed messages
-5. **Confidence Warnings**: Alerts users when information confidence is low
+If you return the optional metadata, the UI highlights it:
 
-## Session Management
+```ts
+"answer": {
+  "fact_type": "deadline",
+  "deadline_type": "final",
+  "level": "undergraduate",
+  "audience": "domestic",
+  "date_iso": "2025-01-15",
+  "timezone": "America/Chicago",
+  "text": "...",
+  "confidence": 0.95
+},
+"source": {
+  "url": "https://wichita.edu/admissions/deadlines",
+  "quote": "Final deadline ..."
+}
+```
 
-- **Session IDs**: Automatically generated for each conversation
-- **User IDs**: Unique identifiers for each user
-- **Session Reset**: Clears session when user starts a new chat
-- **Context Preservation**: Sends conversation history for context
+- Deadlines show calendar cards with formatted dates.
+- Confidence translates into color-coded badges.
+- Source URLs become clickable hyperlinks in the chat bubble.
 
-## Testing the Integration
+---
 
-1. **Start the backend server** on `http://localhost:8000`
-2. **Start the frontend** with `npm run dev`
-3. **Test the chat** by sending messages
-4. **Check browser console** for any API errors
+## 5. Error Handling & Fallbacks
 
-## Development Notes
+| Situation | What the frontend does |
+| --- | --- |
+| Network failure / timeout | Shows friendly “please try again” message |
+| Backend returns `status: 'error'` | Displays backend error text |
+| Non-JSON / malformed payload | User-facing error + console stack |
+| Missing `answer.text` | Displays safe fallback text |
 
-- The frontend gracefully handles backend unavailability
-- Mock responses are used during name collection phase
-- Real API calls are made only for regular conversation
-- All API calls include proper error handling and user feedback
+All errors are now logged succinctly (console noise has been removed).
 
-## Production Deployment
+---
 
-For production deployment:
+## 6. Session Behaviour
 
-1. Update `NEXT_PUBLIC_API_URL` to your production API endpoint
-2. Ensure CORS is properly configured on your backend
-3. Test the integration thoroughly before going live
-4. Monitor API response times and error rates
+- Each tab/session gets a unique `session_id` and `user_id`.
+- Conversation history (last 10 exchanges) is sent to the backend for added context.
+- The “Reset chat” button regenerates IDs and clears history.
+
+---
+
+## 7. Testing Checklist
+
+1. **Backend running on 8501**  
+   ```bash
+   uvicorn app:app --host 0.0.0.0 --port 8501
+   ```
+2. **Frontend dev server**  
+   ```bash
+   npm run dev
+   ```
+3. **Verify with curl** (see example above)  
+4. **Check browser console** for any remaining warnings/errors.
+
+### Docker end-to-end test
+
+```bash
+docker build -t wuchat .
+docker run -p 3000:3000 \
+  -e NEXT_PUBLIC_API_URL=http://host.docker.internal:8501 \
+  wuchat
+```
+
+Ensure the backend is reachable from inside the container (use `host.docker.internal` or the host IP).
+
+---
+
+## 8. Production Notes
+
+1. Set `NEXT_PUBLIC_API_URL` to your production endpoint at build time.
+2. Confirm CORS allows requests from the deployed frontend origin.
+3. Monitor backend logs for malformed payloads—these now surface clearly.
+4. Version the API if you plan breaking changes; the frontend can accept multiple formats, but explicit contracts are safer.
+
+---
+
+With this setup, the frontend stays responsive even if the backend changes its schema slightly, and the UI now surfaces clickable sources, structured deadlines, and fallback text when anything unexpected happens. Let me know if you need the backend contract tightened further (e.g., strict schema validation). 👍

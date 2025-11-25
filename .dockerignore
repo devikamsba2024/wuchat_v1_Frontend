@@ -1,0 +1,33 @@
+# Dependency directories
+node_modules
+.pnp
+.pnp.js
+
+# Build output
+.next
+out
+dist
+
+# Debug / logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Local env files
+.env*
+
+# IDE / tooling
+.vscode
+.idea
+
+# Git / Docker
+.git
+.gitignore
+Dockerfile*
+
+# TypeScript
+*.tsbuildinfo
+
+

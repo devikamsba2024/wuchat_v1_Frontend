@@ -77,31 +77,38 @@ npm run dev
 src/
 ├── app/                    # Next.js App Router pages
 │   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Landing page with chat
+│   ├── page.tsx           # Landing page with chat
+│   └── globals.css        # Global styles and CSS variables
 ├── components/            # React components
-│   ├── ui/               # shadcn/ui components
+│   ├── ui/               # shadcn/ui components (button, card, badge, etc.)
+│   ├── SimpleChat.tsx    # Main chat interface component
+│   ├── StructuredMessage.tsx  # Message display with structured data
 │   ├── WuWatermark.tsx   # Custom WU watermark SVG
-│   ├── ChatWindow.tsx    # Main chat interface
-│   ├── ChatMessage.tsx   # Individual message component
-│   ├── PromptChips.tsx   # Quick prompt buttons
 │   ├── Header.tsx        # Site header
 │   └── Layout.tsx        # Main layout wrapper
-└── lib/                  # Utility functions
+└── lib/                  # Utility functions and API
+    ├── api.ts            # Backend API integration
     └── utils.ts          # Tailwind class utilities
 ```
 
 ## 🎯 Key Components
 
-### WuWatermark
-Custom SVG component that renders a subtle "WU" watermark on the landing page. Designed to be non-intrusive and not use any trademarked materials.
-
-### ChatWindow
-The main chat interface featuring:
+### SimpleChat
+The main chat interface component featuring:
+- Real-time message exchange with backend API
 - Message history with user/bot distinction
 - Typing indicators
-- Quick prompt chips
 - Copy-to-clipboard functionality
+- Source URL linking
 - Mobile-responsive design
+- Session and user management
+
+### StructuredMessage
+Displays bot responses with structured data:
+- Deadline information with dates
+- Confidence scores
+- Source URLs as clickable links
+- Markdown rendering with auto-linking
 
 ### Accessibility Features
 - Skip-to-content links
@@ -112,19 +119,6 @@ The main chat interface featuring:
 - High contrast mode support
 
 ## 🔧 Customization
-
-### Adding New Chat Prompts
-Edit the `defaultPrompts` array in `src/components/PromptChips.tsx`:
-
-```typescript
-const defaultPrompts = [
-  'Application deadlines',
-  'Scholarships',
-  'Campus map',
-  'Contact OneStop',
-  // Add your custom prompts here
-];
-```
 
 ### Styling Customization
 The app uses CSS variables for easy theming. Key variables are defined in `src/app/globals.css`:
@@ -196,6 +190,133 @@ PORT=8080 npm start
 ```
 
 To change the backend URL, set the `NEXT_PUBLIC_API_URL` environment variable before building.
+
+## 🐳 Docker Deployment
+
+### Prerequisites
+- Docker installed and running
+- Backend API accessible (running on host machine or in another container)
+
+### Building the Docker Image
+
+Build the production image:
+
+```bash
+docker build -t wuchat .
+```
+
+This will:
+- Install all dependencies
+- Build the Next.js production bundle
+- Create an optimized container image
+
+### Running the Container
+
+#### Basic Run (Backend on Host Machine)
+
+For Mac/Windows (backend on host at `localhost:8501`):
+
+```bash
+docker run -d -p 3000:3000 \
+  --name wuchat \
+  -e NEXT_PUBLIC_API_URL=http://host.docker.internal:8501 \
+  wuchat
+```
+
+For Linux (replace `192.168.1.100` with your host IP):
+
+```bash
+docker run -d -p 3000:3000 \
+  --name wuchat \
+  -e NEXT_PUBLIC_API_URL=http://192.168.1.100:8501 \
+  --add-host=host.docker.internal:host-gateway \
+  wuchat
+```
+
+#### Using Docker Compose (Recommended)
+
+Create a `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  frontend:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8501
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    # Your backend service configuration here
+    # Example:
+    # image: your-backend-image
+    # ports:
+    #   - "8501:8501"
+```
+
+Then run:
+
+```bash
+docker-compose up -d
+```
+
+### Container Management
+
+**View logs:**
+```bash
+docker logs wuchat
+# or follow logs in real-time
+docker logs -f wuchat
+```
+
+**Stop the container:**
+```bash
+docker stop wuchat
+```
+
+**Start the container:**
+```bash
+docker start wuchat
+```
+
+**Remove the container:**
+```bash
+docker rm -f wuchat
+```
+
+**Rebuild and restart:**
+```bash
+docker build -t wuchat .
+docker rm -f wuchat
+docker run -d -p 3000:3000 --name wuchat -e NEXT_PUBLIC_API_URL=http://host.docker.internal:8501 wuchat
+```
+
+### Testing the Container
+
+After starting the container, verify it's running:
+
+```bash
+# Check container status
+docker ps
+
+# Test HTTP endpoint
+curl http://localhost:3000
+
+# Check environment variables
+docker exec wuchat printenv NEXT_PUBLIC_API_URL
+```
+
+### Notes
+
+- The container runs in production mode and serves the app on port `3000`
+- `host.docker.internal` lets the container reach services running on your host machine (Mac/Windows)
+- For Linux, use the host IP address or configure `--add-host=host.docker.internal:host-gateway`
+- The container includes all necessary dependencies and is optimized for production use
 
 ## 🔮 Future Enhancements
 
