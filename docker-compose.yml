@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wuchat-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://host.docker.internal:8501}
+    restart: unless-stopped
+    networks:
+      - wuchat-network
+    # Uncomment the following if your backend is also in Docker:
+    # depends_on:
+    #   - backend
+
+  # Uncomment and configure if your backend runs in Docker:
+  # backend:
+  #   image: your-backend-image:latest
+  #   container_name: wuchat-backend
+  #   ports:
+  #     - "8501:8501"
+  #   environment:
+  #     - ENV_VAR=value
+  #   restart: unless-stopped
+  #   networks:
+  #     - wuchat-network
+
+networks:
+  wuchat-network:
+    driver: bridge
+

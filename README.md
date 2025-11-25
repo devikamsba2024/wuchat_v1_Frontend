@@ -235,28 +235,35 @@ docker run -d -p 3000:3000 \
 
 #### Using Docker Compose (Recommended)
 
-Create a `docker-compose.yml`:
+A `docker-compose.yml` file is included in the repository. To use it:
 
-```yaml
-version: '3.8'
+**For backend on host machine (default):**
 
-services:
-  frontend:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8501
-    depends_on:
-      - backend
-    restart: unless-stopped
+```bash
+docker-compose up -d
+```
 
-  backend:
-    # Your backend service configuration here
-    # Example:
-    # image: your-backend-image
-    # ports:
-    #   - "8501:8501"
+This will:
+- Build the frontend image
+- Start the container on port 3000
+- Connect to backend at `http://host.docker.internal:8501` (Mac/Windows)
+
+**For backend in Docker:**
+
+1. Uncomment the `backend` service in `docker-compose.yml`
+2. Update `NEXT_PUBLIC_API_URL` to `http://backend:8501` in the compose file
+3. Run:
+
+```bash
+docker-compose up -d
+```
+
+**Custom backend URL:**
+
+Create a `.env` file:
+
+```env
+NEXT_PUBLIC_API_URL=http://your-backend-url:8501
 ```
 
 Then run:
@@ -267,39 +274,93 @@ docker-compose up -d
 
 ### Container Management
 
+#### Using Docker Compose
+
 **View logs:**
 ```bash
-docker logs wuchat
+docker-compose logs
 # or follow logs in real-time
-docker logs -f wuchat
+docker-compose logs -f
+# or for specific service
+docker-compose logs -f frontend
+```
+
+**Stop the containers:**
+```bash
+docker-compose stop
+```
+
+**Start the containers:**
+```bash
+docker-compose start
+```
+
+**Stop and remove containers:**
+```bash
+docker-compose down
+```
+
+**Rebuild and restart:**
+```bash
+docker-compose up -d --build
+```
+
+**View running services:**
+```bash
+docker-compose ps
+```
+
+#### Using Docker Commands Directly
+
+**View logs:**
+```bash
+docker logs wuchat-frontend
+# or follow logs in real-time
+docker logs -f wuchat-frontend
 ```
 
 **Stop the container:**
 ```bash
-docker stop wuchat
+docker stop wuchat-frontend
 ```
 
 **Start the container:**
 ```bash
-docker start wuchat
+docker start wuchat-frontend
 ```
 
 **Remove the container:**
 ```bash
-docker rm -f wuchat
+docker rm -f wuchat-frontend
 ```
 
 **Rebuild and restart:**
 ```bash
 docker build -t wuchat .
-docker rm -f wuchat
-docker run -d -p 3000:3000 --name wuchat -e NEXT_PUBLIC_API_URL=http://host.docker.internal:8501 wuchat
+docker rm -f wuchat-frontend
+docker run -d -p 3000:3000 --name wuchat-frontend -e NEXT_PUBLIC_API_URL=http://host.docker.internal:8501 wuchat
 ```
 
 ### Testing the Container
 
 After starting the container, verify it's running:
 
+**Using Docker Compose:**
+```bash
+# Check container status
+docker-compose ps
+
+# Test HTTP endpoint
+curl http://localhost:3000
+
+# Check environment variables
+docker-compose exec frontend printenv NEXT_PUBLIC_API_URL
+
+# View logs
+docker-compose logs frontend
+```
+
+**Using Docker commands:**
 ```bash
 # Check container status
 docker ps
@@ -308,7 +369,7 @@ docker ps
 curl http://localhost:3000
 
 # Check environment variables
-docker exec wuchat printenv NEXT_PUBLIC_API_URL
+docker exec wuchat-frontend printenv NEXT_PUBLIC_API_URL
 ```
 
 ### Notes
