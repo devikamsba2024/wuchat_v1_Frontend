@@ -88,11 +88,10 @@ export class ChatAPI {
       const url = `${this.baseURL}/api/ask`;
       
       let response;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
       try {
-        // Add timeout to fetch
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-        
         response = await fetch(url, {
           method: 'POST',
           headers: {
@@ -105,6 +104,20 @@ export class ChatAPI {
         
         clearTimeout(timeoutId);
       } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        // Check if it's an abort error (timeout)
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.error('API request timed out after 60 seconds');
+          throw new Error('Request timed out. The server is taking too long to respond. Please try again.');
+        }
+        
+        // Check if it's a network error
+        if (fetchError instanceof TypeError && fetchError.message.includes('fetch')) {
+          console.error('API request failed: Network error');
+          throw new Error('Network error: Unable to connect to the server. Please check your connection and try again.');
+        }
+        
         console.error('API request failed:', fetchError instanceof Error ? fetchError.message : String(fetchError));
         throw fetchError;
       }
@@ -123,20 +136,16 @@ export class ChatAPI {
       if (!response.ok) {
         // Handle 403 Forbidden specifically (likely CORS or auth issue)
         if (response.status === 403) {
-          console.error('❌ [API] 403 Forbidden from backend');
-          console.error('❌ [API] Response text:', responseText);
+          console.error('API: 403 Forbidden from backend');
           throw new Error(`Backend returned 403 Forbidden. This may be a CORS or authentication issue. Please check your backend configuration.`);
         }
-        console.error('❌ [API] HTTP error! status:', response.status);
-        console.error('❌ [API] Response text:', responseText);
+        console.error('API: HTTP error, status:', response.status);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       // Check if response is JSON
       if (!contentType || !contentType.includes('application/json')) {
-        console.error('❌ [API] Non-JSON response from backend!');
-        console.error('❌ [API] Content-Type was:', contentType);
-        console.error('❌ [API] Response text:', responseText);
+        console.error('API: Non-JSON response from backend, Content-Type:', contentType);
         throw new Error('Backend returned non-JSON response');
       }
 
@@ -239,21 +248,12 @@ export class ChatAPI {
       }
 
       // Fallback: if we have any text in the response, use it
-      console.log('⚠️ [API] ⚠️⚠️⚠️ FALLING BACK TO FALLBACK HANDLER ⚠️⚠️⚠️');
-      console.log('⚠️ [API] This means none of the expected formats matched!');
-      console.log('⚠️ [API] Data keys:', Object.keys(data));
-      console.log('⚠️ [API] Full data object:', JSON.stringify(data, null, 2));
-      
       const fallbackText = 
         (typeof data.answer === 'string' ? data.answer : null) ||
         (data.data?.response) ||
         (('response' in data && typeof (data as { response?: string }).response === 'string') ? (data as { response: string }).response : null) ||
         (data.answer && typeof data.answer === 'object' && 'text' in data.answer ? (data.answer as { text: string }).text : null) ||
         JSON.stringify(data);
-      
-      console.log('⚠️ [API] Fallback extracted text:', fallbackText);
-      console.log('⚠️ [API] Fallback text type:', typeof fallbackText);
-      console.log('⚠️ [API] Fallback text length:', fallbackText?.length || 0);
       
       const fallbackResult = {
         status: 'OK' as const,
@@ -272,6 +272,13 @@ export class ChatAPI {
     } catch (error) {
       console.error('API error:', error instanceof Error ? error.message : String(error));
       
+      // Check if it's a timeout error
+      const isTimeoutError = error instanceof Error && (
+        error.message.includes('timed out') || 
+        error.message.includes('Request timed out') ||
+        error.name === 'AbortError'
+      );
+      
       // Check if it's a network error
       const isNetworkError = error instanceof TypeError && error.message.includes('fetch');
       
@@ -280,7 +287,9 @@ export class ChatAPI {
       
       // Return appropriate error message
       let errorMessage = "I'm sorry, there was an error processing your request. Please try again.";
-      if (isNetworkError) {
+      if (isTimeoutError) {
+        errorMessage = "The request timed out. The server is taking too long to respond. Please try again with a simpler question or check if the backend is running properly.";
+      } else if (isNetworkError) {
         errorMessage = "I'm sorry, I'm having trouble connecting to the server right now. Please try again in a moment.";
       } else if (isForbiddenError) {
         errorMessage = "I'm having trouble connecting to the backend server. Please check that the backend is running and configured to allow requests from this origin (CORS).";
